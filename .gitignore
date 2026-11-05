@@ -1,12 +1,24 @@
+# ==============================================================================
+# Baseado nos templates do gitignore.io:
+#   https://www.toptal.com/developers/gitignore?templates=haskell,alteraquartusii,modelsim,linux,macos,windows,visualstudiocode,intellij,emacs,vim,direnv
+# Ajustado à estrutura deste projeto (Clash + Cabal + Quartus/DE10-Lite).
+# ==============================================================================
+
 # ---------- Haskell / Cabal / Stack ----------
 dist/
+dist-*/
 dist-newstyle/
 .stack-work/
+cabal-dev/
 .cabal-sandbox/
 cabal.sandbox.config
 cabal.project.local
 cabal.project.local~
 .ghc.environment.*
+.hsenv
+*.hsenv
+.hpc/
+.HTF/
 *.hi
 *.o
 *.dyn_hi
@@ -15,15 +27,16 @@ cabal.project.local~
 *.prof
 *.aux
 *.hp
+*.hso
+*.tix
 *.eventlog
 *.chi
 *.chs.h
-.hpc/
-.HTF/
 hs_err_pid*.log
 
 # ---------- Clash ----------
-# Saída do compilador (VHDL/Verilog/SystemVerilog + artefatos GHC)
+# Saída do Makefile (make vhdl/verilog) e do compilador Clash
+build/
 verilog-out/
 vhdl-out/
 systemverilog-out/
@@ -32,6 +45,7 @@ clash-manifest.json
 clash-debug/
 
 # ---------- Quartus (Intel/Altera) ----------
+.quartus/
 db/
 incremental_db/
 output_files/
@@ -67,19 +81,39 @@ tmp-clearbox/
 *.eda.*
 *.flow.*
 
-# ---------- Simulação (ModelSim/GHDL/Verilator) ----------
+# ---------- Simulação (ModelSim/GHDL/Verilator/Icarus) ----------
 work/
 *.wlf
+wlf*
 *.vcd
 *.fst
 *.ghw
+*.vstf
+*.ucdb
 transcript
+transcript*
 modelsim.ini
+*.mti
+*.dbs
+*.psm
+vsim.dbg
+sc_dpiheader.h
 obj_dir/
+*.vvp
+cov/
 
 # ---------- Editores / IDEs ----------
 .vscode/
 .idea/
+*.iml
+*.iws
+.idea_modules/
+out/
+.history/
+*.vsix
+.ionide/
+*.sublime-workspace
+*.code-workspace
 *.swp
 *.swo
 *~
@@ -92,8 +126,28 @@ TAGS
 
 # ---------- SO ----------
 .DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+.fseventsd
+.DocumentRevisions-V100
+.TemporaryItems
+.apdisk
+.AppleDB
+.AppleDesktop
+Network Trash Folder
 Thumbs.db
-desktop.ini
+ehthumbs.db
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.lnk
+*.stackdump
+.directory
+.Trash-*
+.fuse_hidden*
+.nfs*
 
 # ---------- Ambiente ----------
 .direnv/
@@ -101,3 +155,7 @@ desktop.ini
 .env
 result
 result-*
+
+# ---------- Arquivos temporários ----------
+*.orig
+*.rej
