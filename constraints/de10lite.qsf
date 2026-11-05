@@ -1,0 +1,117 @@
+# ==============================================================================
+# Pin assignments para a Terasic DE10-Lite (Intel MAX 10, 10M50DAF484C7G).
+#
+# DIFERENÇAS IMPORTANTES em relação ao basys3.xdc (Xilinx):
+#
+#   * Formato: Quartus não usa "XDC". Pin/location vai aqui, no .qsf
+#     (set_location_assignment); timing (equivalente ao create_clock do
+#     Vivado) fica num arquivo .sdc separado — ver de10lite.sdc.
+#
+#   * Clock: a DE10-Lite roda a 50MHz (MAX10_CLK1_50), não 100MHz como a
+#     Basys3. Se você está reaproveitando o Top.hs deste projeto, PRECISA
+#     ajustar para 50MHz: createDomain (Top.hs), o divisor de pixel do VGA
+#     (VGA.hs espera ~25MHz = clock/4; a 50MHz isso vira clock/2), o
+#     gameTickCycles (Top.hs) e o clkHz do Audio.hs. Só trocar este .qsf
+#     NÃO é suficiente.
+#
+#   * Reset: KEY0 nesta placa é ativo em NÍVEL BAIXO (apertar = 0V) — o
+#     oposto do que o domínio 'vSystem' do Clash assume por padrão (reset
+#     ativo em nível alto). Inverta o reset (ou troque a polaridade do
+#     domínio) no lado do Haskell antes de gerar o HDL.
+#
+# Nomes de porta usados aqui (clk, rst, vgaRed, ...) são os mesmos definidos
+# na anotação Synthesize do topEntity (Top.hs) — ajuste um lado se mudar o
+# outro.
+# ==============================================================================
+
+set_global_assignment -name FAMILY "MAX 10"
+set_global_assignment -name DEVICE 10M50DAF484C7G
+set_global_assignment -name TOP_LEVEL_ENTITY topEntity
+set_global_assignment -name BOARD "MAX 10 DE10 - Lite"
+
+# ------------------------------------------------------------------
+# Clock de 50MHz da placa (MAX10_CLK1_50 no silkscreen/esquemático).
+# Timing: ver create_clock em de10lite.sdc.
+# ------------------------------------------------------------------
+set_location_assignment PIN_P11 -to clk
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to clk
+
+# ------------------------------------------------------------------
+# Reset — KEY0 (push-button, ativo em nível baixo nesta placa).
+# ------------------------------------------------------------------
+set_location_assignment PIN_B8 -to rst
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to rst
+
+# ------------------------------------------------------------------
+# VGA - Red[3:0]  (VGA_R0..VGA_R3 no esquemático)
+# ------------------------------------------------------------------
+set_location_assignment PIN_AA1 -to vgaRed[0]
+set_location_assignment PIN_V1  -to vgaRed[1]
+set_location_assignment PIN_Y2  -to vgaRed[2]
+set_location_assignment PIN_Y1  -to vgaRed[3]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to vgaRed[0]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to vgaRed[1]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to vgaRed[2]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to vgaRed[3]
+
+# ------------------------------------------------------------------
+# VGA - Green[3:0]  (VGA_G0..VGA_G3)
+# ------------------------------------------------------------------
+set_location_assignment PIN_W1 -to vgaGreen[0]
+set_location_assignment PIN_T2 -to vgaGreen[1]
+set_location_assignment PIN_R2 -to vgaGreen[2]
+set_location_assignment PIN_R1 -to vgaGreen[3]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to vgaGreen[0]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to vgaGreen[1]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to vgaGreen[2]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to vgaGreen[3]
+
+# ------------------------------------------------------------------
+# VGA - Blue[3:0]  (VGA_B0..VGA_B3)
+# ------------------------------------------------------------------
+set_location_assignment PIN_P1 -to vgaBlue[0]
+set_location_assignment PIN_T1 -to vgaBlue[1]
+set_location_assignment PIN_P4 -to vgaBlue[2]
+set_location_assignment PIN_N2 -to vgaBlue[3]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to vgaBlue[0]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to vgaBlue[1]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to vgaBlue[2]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to vgaBlue[3]
+
+# ------------------------------------------------------------------
+# VGA - HSync / VSync
+# ------------------------------------------------------------------
+set_location_assignment PIN_N3 -to vgaHSync
+set_location_assignment PIN_N1 -to vgaVSync
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to vgaHSync
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to vgaVSync
+
+# ------------------------------------------------------------------
+# Áudio (buzzer/alto-falante com resistor em série) — pino livre do
+# header GPIO de 2x20 da DE10-Lite (GPIO[0]). A placa não tem Pmod
+# como a Basys3; o header GPIO é o análogo mais próximo.
+# ------------------------------------------------------------------
+set_location_assignment PIN_V10 -to audioPwm
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to audioPwm
+
+# ------------------------------------------------------------------
+# LEDs (tamanho da cobra em binário) — LEDR0..LEDR7. A DE10-Lite tem
+# 10 LEDs (LEDR0..LEDR9); usamos só os 8 primeiros, LEDR8/LEDR9 ficam
+# livres.
+# ------------------------------------------------------------------
+set_location_assignment PIN_A8  -to led[0]
+set_location_assignment PIN_A9  -to led[1]
+set_location_assignment PIN_A10 -to led[2]
+set_location_assignment PIN_B10 -to led[3]
+set_location_assignment PIN_D13 -to led[4]
+set_location_assignment PIN_C13 -to led[5]
+set_location_assignment PIN_E14 -to led[6]
+set_location_assignment PIN_D14 -to led[7]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to led[0]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to led[1]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to led[2]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to led[3]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to led[4]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to led[5]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to led[6]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to led[7]

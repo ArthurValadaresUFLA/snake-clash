@@ -1,0 +1,48 @@
+cabal-version:       2.4
+name:                snake-clash
+version:             0.1.0.0
+synopsis:            Jogo da cobrinha auto-jogável em Clash (VGA + audio)
+build-type:          Simple
+
+common common-options
+  default-language:    Haskell2010
+  ghc-options:          -Wall
+                        -fplugin=GHC.TypeLits.Extra.Solver
+                        -fplugin=GHC.TypeLits.Normalise
+                        -fplugin=GHC.TypeLits.KnownNat.Solver
+  default-extensions:   DataKinds
+                       , DeriveAnyClass
+                       , DeriveGeneric
+                       , FlexibleContexts
+                       , NoImplicitPrelude
+                       , NoStarIsType
+                       , RecordWildCards
+                       , ScopedTypeVariables
+                       , TypeApplications
+                       , TypeFamilies
+                       , TypeOperators
+                       , TemplateHaskell
+                       , NumericUnderscores
+                       , LambdaCase
+  build-depends:        base
+                       , clash-prelude
+                       , ghc-typelits-natnormalise
+                       , ghc-typelits-extra
+                       , ghc-typelits-knownnat
+
+library
+  import:              common-options
+  hs-source-dirs:      src
+  exposed-modules:     Types
+                       LFSR
+                       BFS
+                       Snake
+                       VGA
+                       Render
+                       Audio
+                       Top
+
+-- Alvo usado pelo Clash para gerar o Verilog/VHDL sintetizável.
+-- Exemplo de uso:
+--   clash --verilog src/Top.hs
+--   clash --vhdl    src/Top.hs

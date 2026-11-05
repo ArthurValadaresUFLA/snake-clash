@@ -1,0 +1,71 @@
+# Instalação:
+#   pip install pre-commit   (ou: pipx install pre-commit)
+#   pre-commit install
+default_install_hook_types: [pre-commit, commit-msg]
+
+repos:
+  # ---------- Higiene geral ----------
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+        args: [--fix=lf]
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: [--maxkb=500]
+      - id: check-case-conflict
+      - id: check-yaml
+      - id: check-json
+      - id: detect-private-key
+      # Impede commit de artefatos gerados, caso escapem do .gitignore
+      - id: forbid-new-submodules
+
+  # ---------- Markdown ----------
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.43.0
+    hooks:
+      - id: markdownlint
+        args: [--fix]
+
+  # ---------- Commits convencionais (opcional) ----------
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v3.6.0
+    hooks:
+      - id: conventional-pre-commit
+        stages: [commit-msg]
+
+  # ---------- Haskell ----------
+  - repo: local
+    hooks:
+      - id: fourmolu
+        name: fourmolu (formatação Haskell)
+        entry: fourmolu --mode inplace
+        language: system
+        files: \.hs$
+        types: [file]
+
+      - id: hlint
+        name: hlint
+        entry: hlint
+        language: system
+        files: \.hs$
+        types: [file]
+
+      - id: cabal-check
+        name: cabal check
+        entry: cabal check
+        language: system
+        files: \.cabal$
+        pass_filenames: false
+
+      # Bloqueia artefatos de build que não deveriam ser versionados
+      - id: no-build-artifacts
+        name: bloquear artefatos de build (.hi/.o/verilog-out)
+        entry: >-
+          bash -c 'if git diff --cached --name-only | grep -E "\.(hi|o|dyn_hi|dyn_o)$|^verilog-out/|^dist-newstyle/|^output_files/|^db/|\.sof$"; then
+          echo "Artefatos de build detectados no commit."; exit 1; fi'
+        language: system
+        pass_filenames: false
+        always_run: true
