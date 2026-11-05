@@ -27,22 +27,20 @@ import Clash.Prelude
 --   * ateApple  -> tom agudo curto
 --   * died      -> tom grave um pouco mais longo
 -- Fora isso, o pino fica em silêncio (nível baixo constante).
--- Assumindo clock de 100MHz.
+-- Assumindo clock de 50MHz (DE10-Lite).
+--
+-- As constantes abaixo são LITERAIS (pré-calculadas) para não gerar
+-- divisores de 32 bits no hardware.
 -- ============================================================================
 
-clkHz :: Unsigned 32
-clkHz = 50_000_000
-
-toneHalfPeriod :: Unsigned 32 -> Unsigned 32
-toneHalfPeriod freqHz = clkHz `div` (2 * freqHz)
-
-eatFreq, deadFreq :: Unsigned 32
-eatFreq = 1200
-deadFreq = 220
+-- meio período em ciclos de clock: 50e6 / (2 * freq)
+eatHalf, deadHalf :: Unsigned 32
+eatHalf = 20_833 -- 1200 Hz
+deadHalf = 113_636 -- 220 Hz
 
 eatDurationCycles, deadDurationCycles :: Unsigned 32
-eatDurationCycles = clkHz `div` 12 -- ~83ms
-deadDurationCycles = clkHz `div` 3 -- ~333ms
+eatDurationCycles = 4_166_666 -- ~83ms
+deadDurationCycles = 16_666_666 -- ~333ms
 
 data AudioState = AudioState
     { asActive :: Bool
@@ -54,13 +52,13 @@ data AudioState = AudioState
     deriving (Generic, NFDataX)
 
 initAudio :: AudioState
-initAudio = AudioState False (toneHalfPeriod eatFreq) 0 0 False
+initAudio = AudioState False eatHalf 0 0 False
 
 -- | eatEvent/deadEvent devem ser pulsos de exatamente 1 ciclo de clock.
 audioStep :: AudioState -> Bool -> Bool -> AudioState
 audioStep st eatEvent deadEvent
-    | deadEvent = start deadFreq deadDurationCycles
-    | eatEvent = start eatFreq eatDurationCycles
+    | deadEvent = start deadHalf deadDurationCycles
+    | eatEvent = start eatHalf eatDurationCycles
     | not (asActive st) = st{asOut = False}
     | asRemain st == 0 = st{asActive = False, asOut = False}
     | asToggleAt st == 0 =
@@ -75,7 +73,7 @@ audioStep st eatEvent deadEvent
             , asRemain = asRemain st - 1
             }
   where
-    start freq dur = AudioState True (toneHalfPeriod freq) dur (toneHalfPeriod freq) False
+    start half dur = AudioState True half dur half False
 
 audioPin :: AudioState -> Bool
 audioPin = asOut
