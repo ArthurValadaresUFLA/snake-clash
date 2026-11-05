@@ -13,7 +13,7 @@
 
 module Render (
     Rgb444 (..),
-    pixelColor,
+    renderGen,
 ) where
 
 import Clash.Prelude
@@ -22,18 +22,18 @@ import Types
 import VGA
 
 -- ============================================================================
--- Renderização propositalmente simples: sem sprites, sem antialiasing,
--- sem textura — cada célula do tabuleiro vira um quadrado sólido de cor
--- única (preto = vazio, verde = corpo da cobra, branco = cabeça,
--- vermelho = maçã), com uma linha de grade 1px mais escura entre células
--- só para dar noção visual do tabuleiro. Em "game over" a tela pisca em
--- vermelho.
+-- Renderização simples: cada célula (32x32 px) vira um quadrado sólido
+-- (preto = vazio, verde = corpo, branco = cabeça, vermelho = maçã), com uma
+-- linha de grade escura. Em "game over" a tela pisca em vermelho.
+--
+-- Pipeline de 2 estágios (cores, HSYNC e VSYNC saem registrados e atrasados
+-- igualmente):
+--   estágio 1: pixel -> coordenada/índice da célula (shift de 5 bits, sem
+--              divisão) e flags;
+--   estágio 2: consulta ocupação/maçã/cabeça e escolhe a cor.
 -- ============================================================================
 
-cellPx :: Unsigned 10
-cellPx = 32 -- 640/20 = 32, 480/15 = 32 -> bate certinho com Cols/Rows
-
--- | Saída típica de placas didáticas (Basys3/Nexys): 4 bits por canal.
+-- | Saída: 4 bits por canal.
 data Rgb444 = Rgb444
     { rR :: Unsigned 4
     , rG :: Unsigned 4
@@ -48,29 +48,54 @@ green = Rgb444 0x1 0xC 0x1
 brightWhite = Rgb444 0xF 0xF 0xF
 red = Rgb444 0xF 0x1 0x1
 
-pixelToCoord :: Unsigned 10 -> Unsigned 10 -> Coord
-pixelToCoord h v = Coord x y
+data Pre = Pre
+    { pCell :: Coord
+    , pIdx :: CIdx
+    , pGrid :: Bool
+    , pVis :: Bool
+    , pHs :: Bool
+    , pVs :: Bool
+    }
+    deriving (Generic, NFDataX)
+
+pre0 :: Pre
+pre0 = Pre (Coord 0 0) 0 False False True True
+
+stage1 :: VgaOut -> Pre
+stage1 v = Pre c (toIdx c) grid vis (vgaHSync v) (vgaVSync v)
   where
-    x = fromIntegral (h `div` cellPx)
-    y = fromIntegral (v `div` cellPx)
+    h = vgaHCount v
+    vv = vgaVCount v
+    vis = vgaVisible v
+    -- 32 px por célula: divisão = shift de 5 bits
+    c =
+        if vis
+            then Coord (fromIntegral (h `shiftR` 5)) (fromIntegral (vv `shiftR` 5))
+            else Coord 0 0
+    grid = (h .&. 31) == 0 || (vv .&. 31) == 0
 
-isGridLine :: Unsigned 10 -> Unsigned 10 -> Bool
-isGridLine h v = (h `mod` cellPx == 0) || (v `mod` cellPx == 0)
+stage2 :: GameState -> Bool -> Pre -> (Rgb444, Bool, Bool)
+stage2 gs blinkOn p = (col, pHs p, pVs p)
+  where
+    col
+        | not (pVis p) = black
+        | isDead gs = if blinkOn then red else black
+        | pCell p == gsApple gs = red
+        | gsOcc gs !! pIdx p = if pCell p == gsHead gs then brightWhite else green
+        | pGrid p = darkGray
+        | otherwise = black
 
-pixelColor :: GameState -> VgaOut -> Bool -> Rgb444
-pixelColor gs vga blinkOn
-    | not (vgaVisible vga) = black
-    | gsPhase gs == Dead = if blinkOn then red else black
-    | otherwise =
-        let h = vgaHCount vga
-            v = vgaVCount vga
-            c = pixelToCoord h v
-         in if c == gsApple gs
-                then red
-                else
-                    if getG (gsOcc gs) c
-                        then if c == headOf gs then brightWhite else green
-                        else
-                            if isGridLine h v
-                                then darkGray
-                                else black
+-- | (R/G/B, HSYNC, VSYNC), já registrados.
+renderGen ::
+    forall dom.
+    (HiddenClockResetEnable dom) =>
+    Signal dom GameState ->
+    Signal dom VgaOut ->
+    Signal dom Bool ->
+    (Signal dom Rgb444, Signal dom Bool, Signal dom Bool)
+renderGen gs vga blink = unbundle out
+  where
+    p1 :: Signal dom Pre
+    p1 = register pre0 (stage1 <$> vga)
+    out :: Signal dom (Rgb444, Bool, Bool)
+    out = register (black, True, True) (stage2 <$> gs <*> blink <*> p1)
