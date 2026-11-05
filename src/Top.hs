@@ -121,14 +121,15 @@ go = (vgaRedS, vgaGreenS, vgaBlueS, vgaHSyncS, vgaVSyncS, audioPwmS, ledS)
     ledS = resize . pack . gsLen <$> gs
 
 {- | Portas físicas: os nomes abaixo (via ANN Synthesize) precisam bater
-EXATAMENTE com os usados no arquivo de constraints (ver basys3.xdc) —
-sem essa anotação o Clash nomeia as portas por posição (ex.: "result_0",
-"result_1", ...) e o .xdc simplesmente não encontra os pinos.
+EXATAMENTE com os usados no arquivo de constraints
+(constraints/de10lite.qsf) — sem essa anotação o Clash nomeia as portas
+por posição (ex.: "result_0", "result_1", ...) e o .qsf simplesmente não
+encontra os pinos.
 
 'Enable' não é exposto como porta física: a placa não tem um pino "en"
 dedicado (nem faz sentido ter — nossa lógica deve ficar sempre habilitada),
 então ele é amarrado internamente a 'enableGen' em vez de virar uma porta
-de entrada solta e sem constraint no .xdc.
+de entrada solta e sem constraint no .qsf.
 -}
 {-# ANN
     topEntity
