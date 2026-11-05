@@ -63,8 +63,12 @@ data GameState = GameState
 isDead :: GameState -> Bool
 isDead gs = gsMode gs == MDead
 
--- | Conteúdo inicial da RAM do corpo (o corpo real é escrito em MInit).
-startBodyRam :: Vec NCells Coord
+{- | Conteúdo inicial da RAM do corpo (o corpo real é escrito em MInit).
+Profundidade 512 (potência de 2) de propósito: o Quartus infere a RAM com
+profundidade arredondada para 512 e reclama se o conteúdo inicial tiver 300
+palavras. Os endereços continuam sendo CIdx (0..299).
+-}
+startBodyRam :: Vec 512 Coord
 startBodyRam = repeat (Coord 0 0)
 
 -- Corpo inicial: índice 0 = cauda, 2 = cabeça.
