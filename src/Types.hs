@@ -19,16 +19,18 @@ import Clash.Prelude
 -- Parâmetros do tabuleiro
 -- ============================================================================
 -- 640x480 dividido em blocos de 32x32 pixels -> 20 colunas x 15 linhas.
--- Alterar aqui (junto com o CELL_PX em Render.hs) para mudar a resolução
--- lógica do jogo. Quanto maior o tabuleiro, mais registradores a busca
--- (BFS.hs) consome — ver aviso no README.
+-- Alterar aqui (junto com o shift de 5 bits em Render.hs) para mudar a
+-- resolução lógica do jogo.
 
 type Cols = 20
 type Rows = 15
-type NCells = Rows * Cols -- 300 células, usado como capacidade da fila do BFS
+type NCells = Rows * Cols -- 300 células
 
 type XI = Index Cols
 type YI = Index Rows
+
+-- | Índice linear (row-major) de uma célula.
+type CIdx = Index NCells
 
 -- | Coordenada discreta de uma célula do tabuleiro (não é pixel).
 data Coord = Coord
@@ -43,7 +45,6 @@ data Coord = Coord
 data Dir4 = North | East_ | South | West
     deriving (Generic, NFDataX, Eq, Show, Bounded)
 
--- índice 0..3 <-> direção, evitando depender de Enum/toEnum em hardware
 dirToIdx :: Dir4 -> Index 4
 dirToIdx North = 0
 dirToIdx East_ = 1
@@ -76,32 +77,36 @@ neighbor (Coord x y) East_
     | x == maxBound = Nothing
     | otherwise = Just (Coord (x + 1) y)
 
+-- | Próxima célula em ordem row-major; Nothing depois da última.
+nextCell :: Coord -> Maybe Coord
+nextCell (Coord x y)
+    | x /= maxBound = Just (Coord (x + 1) y)
+    | y /= maxBound = Just (Coord 0 (y + 1))
+    | otherwise = Nothing
+
+-- | Coordenada -> índice linear (y * Cols + x).
+toIdx :: Coord -> CIdx
+toIdx (Coord x y) = fromIntegral (yy * 20 + xx)
+  where
+    yy = fromIntegral y :: Unsigned 9
+    xx = fromIntegral x :: Unsigned 9
+
 -- ============================================================================
--- Grade genérica Rows x Cols de qualquer coisa (ocupação, "cor" do BFS, etc)
+-- Mapa de células achatado (um Vec de NCells). Todo acesso é a UMA célula por
+-- vez (leitura por índice, escrita por índice), o que mantém a lógica gerada
+-- pequena. Evite Vec (Vec ..) com replace aninhado e laços sobre o tabuleiro
+-- inteiro em um único ciclo: é isso que faz o Quartus travar na síntese.
 -- ============================================================================
 
-type Grid a = Vec Rows (Vec Cols a)
+type Cells a = Vec NCells a
 
-emptyGrid :: a -> Grid a
-emptyGrid v = repeat (repeat v)
+getC :: Cells a -> Coord -> a
+getC v c = v !! toIdx c
 
-getG :: Grid a -> Coord -> a
-getG g (Coord x y) = (g !! y) !! x
-
-setG :: Grid a -> Coord -> a -> Grid a
-setG g (Coord x y) v = replace y (replace x v (g !! y)) g
-
--- | Achata a grade em ordem row-major, casando com NCells = Rows * Cols.
-flattenG :: Grid a -> Vec NCells a
-flattenG = concat
-
--- Índice linear auxiliar (usado para ponteiros de fila circular do BFS)
-type CIdx = Index NCells
+setC :: Cells a -> Coord -> a -> Cells a
+setC v c x = replace (toIdx c) x v
 
 incIdx :: CIdx -> CIdx
 incIdx i
     | i == maxBound = 0
     | otherwise = i + 1
-
--- | Tamanho máximo teórico da cobra: o tabuleiro inteiro.
-type MaxLen = NCells
