@@ -25,16 +25,16 @@ import Types
 import VGA
 
 -- ============================================================================
--- Domínio de clock: assume-se um clock de placa de 100MHz (comum em
--- Basys3/Nexys A7/Arty). Ajuste createDomain se sua placa usar outra
--- frequência, e os divisores em VGA.hs / Audio.hs / gameTickCycles abaixo.
+-- Domínio de clock: clock de placa de 50MHz (DE10-Lite). Ajuste createDomain
+-- se usar outra frequência, e os divisores em VGA.hs / Audio.hs /
+-- gameTickCycles abaixo.
 -- ============================================================================
 createDomain vSystem{vName = "Dom50", vPeriod = hzToPeriod 50_000_000}
 
--- Quantos movimentos de cobra por segundo. 6/s é um bom valor para
--- "ver" a IA pensando; aumente para algo mais frenético.
+-- Ciclos entre movimentos da cobra: 12 movimentos/s (50_000_000 / 12).
+-- Literal para não gerar divisor.
 gameTickCycles :: Unsigned 26
-gameTickCycles = 50_000_000 `div` 12
+gameTickCycles = 4_166_667
 
 tickGen :: forall dom. (HiddenClockResetEnable dom) => Signal dom Bool
 tickGen = tick
@@ -56,7 +56,12 @@ gameSignal :: forall dom. (HiddenClockResetEnable dom) => Signal dom GameState
 gameSignal = gs
   where
     gs :: Signal dom GameState
-    gs = register (initGame 0xBEEF) (gameStep <$> gs <*> tickGen)
+    gs = register (initGame 0xBEEF) (gameStep <$> gs <*> tickGen <*> tailC)
+
+    -- Corpo da cobra (buffer circular) em block RAM: lê a cauda no endereço
+    -- gsTailPtr e grava a nova cabeça quando gsWr for Just.
+    tailC :: Signal dom Coord
+    tailC = blockRam startBodyRam (gsTailPtr <$> gs) (gsWr <$> gs)
 
 {- | Corpo do circuito, escrito no estilo "clock/reset/enable implícitos"
 (idiomático em Clash) e depois exposto explicitamente em 'topEntity'.
@@ -79,11 +84,13 @@ go = (vgaRedS, vgaGreenS, vgaBlueS, vgaHSyncS, vgaVSyncS, audioPwmS, ledS)
     vga :: Signal dom VgaOut
     vga = vgaGen
 
-    prevPhase :: Signal dom Phase
-    prevPhase = register Alive (gsPhase <$> gs)
+    dead :: Signal dom Bool
+    dead = isDead <$> gs
+    prevDead :: Signal dom Bool
+    prevDead = register False dead
 
     deadEvent :: Signal dom Bool
-    deadEvent = (\p pp -> p == Dead && pp == Alive) <$> (gsPhase <$> gs) <*> prevPhase
+    deadEvent = (\d pd -> d && not pd) <$> dead <*> prevDead
     -- Usa o pulso gsAte vindo do próprio gameStep em vez de inferir o evento
     -- comparando a posição da maçã entre ciclos: essa comparação disparava
     -- um "beep" de comer falso tanto no power-on quanto a cada reinício
@@ -98,16 +105,16 @@ go = (vgaRedS, vgaGreenS, vgaBlueS, vgaHSyncS, vgaVSyncS, audioPwmS, ledS)
 
     blink :: Signal dom Bool
     blink = blinkGen
+    -- cor, HSYNC e VSYNC já registrados e alinhados (pipeline de 2 ciclos)
     colorS :: Signal dom Rgb444
-    colorS = pixelColor <$> gs <*> vga <*> blink
+    vgaHSyncS, vgaVSyncS :: Signal dom Bool
+    (colorS, vgaHSyncS, vgaVSyncS) = renderGen gs vga blink
 
     vgaRedS, vgaGreenS, vgaBlueS :: Signal dom (Unsigned 4)
     vgaRedS = rR <$> colorS
     vgaGreenS = rG <$> colorS
     vgaBlueS = rB <$> colorS
-    vgaHSyncS, vgaVSyncS, audioPwmS :: Signal dom Bool
-    vgaHSyncS = vgaHSync <$> vga
-    vgaVSyncS = vgaVSync <$> vga
+    audioPwmS :: Signal dom Bool
     audioPwmS = audioOut
 
     ledS :: Signal dom (BitVector 8)
