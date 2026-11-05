@@ -1,31 +1,40 @@
 PROJ        := snake-clash
 TOP         := Top
 SRC_DIR     := src
-BUILD_DIR   := build
-HDL_DIR     := $(BUILD_DIR)/vhdl
-VERILOG_DIR := $(BUILD_DIR)/verilog
-SOF         := output_files/$(PROJ).sof
+VHDL_DIR    := vhdl-out
+VERILOG_DIR := verilog-out
 
-# Ajuste se o Clash for chamado de outra forma (ex.: stack run clash --)
-CLASH    ?= clash
-HS_SRC   := $(wildcard $(SRC_DIR)/*.hs)
-VHDL_OUT := $(HDL_DIR)/$(TOP).topEntity/topEntity.vhdl
+# Ajuste se o Clash/Cabal forem chamados de outra forma (ex.: stack run clash --)
+CLASH       ?= clash
+CABAL       ?= cabal
+HS_SRC      := $(wildcard $(SRC_DIR)/*.hs)
+VHDL_OUT    := $(VHDL_DIR)/$(TOP).topEntity/topEntity.vhdl
+VERILOG_OUT := $(VERILOG_DIR)/$(TOP).topEntity/topEntity.v
+
+# Na primeira execução (sem .ghc.environment.*), garante que o cabal
+# resolva as dependências antes de chamar o Clash.
+ifeq ($(wildcard .ghc.environment.*),)
+CLASH_PREREQ := build
+endif
 
 .DEFAULT_GOAL := help
-.PHONY: help vhdl bitstream program lint fmt clean-verilog clean-vhdl clean
+.PHONY: help build vhdl verilog lint fmt clean-verilog clean-vhdl clean
 
 help:            ## Lista os alvos disponíveis
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | \
 	  awk 'BEGIN{FS=":.*?## "}{printf "  %-15s %s\n",$$1,$$2}'
 
-vhdl: $(VHDL_OUT)  ## Gera VHDL com o Clash
+build:           ## Compila a biblioteca e grava o ambiente GHC para o Clash
+	$(CABAL) build --write-ghc-environment-files=always
+
+vhdl: $(CLASH_PREREQ) $(VHDL_OUT)  ## Gera VHDL com o Clash
 
 $(VHDL_OUT): $(HS_SRC) $(PROJ).cabal
-	$(CLASH) -i$(SRC_DIR) $(SRC_DIR)/$(TOP).hs --vhdl -outputdir $(HDL_DIR)
+	$(CLASH) -i$(SRC_DIR) $(SRC_DIR)/$(TOP).hs --vhdl -outputdir $(VHDL_DIR)
 
-verilog: $(VERILOG_DIR)  ## Gera o Verilog com o Clash
+verilog: $(CLASH_PREREQ) $(VERILOG_OUT)  ## Gera o Verilog com o Clash
 
-$(VERILOG_DIR): $(HS_SRC) $(PROJ).cabal
+$(VERILOG_OUT): $(HS_SRC) $(PROJ).cabal
 	$(CLASH) -i$(SRC_DIR) $(SRC_DIR)/$(TOP).hs --verilog -outputdir $(VERILOG_DIR)
 
 lint:            ## Roda hlint
@@ -34,10 +43,10 @@ lint:            ## Roda hlint
 fmt:             ## Formata o código Haskell
 	fourmolu --mode inplace $(HS_SRC)
 
-clean-vhdl:      ## Remove saída do Clash para VHDL
-	rm -rf $(HDL_DIR)
+clean-vhdl:      ## Remove a saída do Clash para VHDL
+	rm -rf $(VHDL_DIR)
 
-clean-verilog:   ## Remove saída do Clash para Verilog
+clean-verilog:   ## Remove a saída do Clash para Verilog
 	rm -rf $(VERILOG_DIR)
 
 clean: clean-verilog clean-vhdl ## Remove todas as saídas do Clash
