@@ -2,9 +2,7 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE NumericUnderscores #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE NoImplicitPrelude #-}
@@ -21,6 +19,7 @@ module BFS (
 ) where
 
 import Clash.Prelude
+import Data.Maybe (isNothing)
 import Types
 
 -- ============================================================================
@@ -95,7 +94,7 @@ expand occ appleC col nc st
             , bArea = replace ci (bArea st !! ci + 1) (bArea st)
             , bAny = True
             , bAppleDir =
-                if nc == appleC && bAppleDir st == Nothing
+                if nc == appleC && isNothing (bAppleDir st)
                     then Just col
                     else bAppleDir st
             }

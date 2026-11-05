@@ -118,7 +118,7 @@ go = (vgaRedS, vgaGreenS, vgaBlueS, vgaHSyncS, vgaVSyncS, audioPwmS, ledS)
     audioPwmS = audioOut
 
     ledS :: Signal dom (BitVector 8)
-    ledS = (\gl -> resize (pack gl)) <$> (gsLen <$> gs)
+    ledS = resize . pack . gsLen <$> gs
 
 {- | Portas físicas: os nomes abaixo (via ANN Synthesize) precisam bater
 EXATAMENTE com os usados no arquivo de constraints (ver basys3.xdc) —
