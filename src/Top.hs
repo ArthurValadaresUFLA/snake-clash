@@ -28,8 +28,17 @@ import VGA
 -- Domínio de clock: clock de placa de 50MHz (DE10-Lite). Ajuste createDomain
 -- se usar outra frequência, e os divisores em VGA.hs / Audio.hs /
 -- gameTickCycles abaixo.
+--
+-- O KEY0 da DE10-Lite é ativo em nível baixo: apertar leva o pino a 0. Com
+-- 'ActiveLow', o domínio e o HDL gerado já interpretam 'rst' nessa
+-- polaridade, sem precisar de um inversor externo no topEntity.
 -- ============================================================================
-createDomain vSystem{vName = "Dom50", vPeriod = hzToPeriod 50_000_000}
+createDomain
+    vSystem
+        { vName = "Dom50"
+        , vPeriod = hzToPeriod 50_000_000
+        , vResetPolarity = ActiveLow
+        }
 
 -- Ciclos entre movimentos da cobra: 12 movimentos/s (50_000_000 / 12).
 -- Literal para não gerar divisor.
