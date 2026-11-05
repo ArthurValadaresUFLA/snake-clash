@@ -1,12 +1,14 @@
 # Instalação:
 #   pip install pre-commit   (ou: pipx install pre-commit)
 #   pre-commit install
+# Ferramentas locais necessárias no PATH: fourmolu, hlint e cabal.
 default_install_hook_types: [pre-commit, commit-msg]
+minimum_pre_commit_version: "3.2.0"
 
 repos:
   # ---------- Higiene geral ----------
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
+    rev: v6.0.0
     hooks:
       - id: trailing-whitespace
       - id: end-of-file-fixer
@@ -19,19 +21,24 @@ repos:
       - id: check-yaml
       - id: check-json
       - id: detect-private-key
-      # Impede commit de artefatos gerados, caso escapem do .gitignore
+      - id: check-executables-have-shebangs
+      - id: check-shebang-scripts-are-executable
+      - id: check-illegal-windows-names
+      - id: check-symlinks
+      - id: destroyed-symlinks
+      # O projeto não usa submódulos; evita adicioná-los por engano.
       - id: forbid-new-submodules
 
   # ---------- Markdown ----------
   - repo: https://github.com/igorshubovych/markdownlint-cli
-    rev: v0.43.0
+    rev: v0.50.0
     hooks:
       - id: markdownlint
         args: [--fix]
 
-  # ---------- Commits convencionais (opcional) ----------
+  # ---------- Commits convencionais ----------
   - repo: https://github.com/compilerla/conventional-pre-commit
-    rev: v3.6.0
+    rev: v4.5.0
     hooks:
       - id: conventional-pre-commit
         stages: [commit-msg]
@@ -43,28 +50,38 @@ repos:
         name: fourmolu (formatação Haskell)
         entry: fourmolu --mode inplace
         language: system
-        files: \.hs$
+        files: '\.hs$'
         types: [file]
 
       - id: hlint
         name: hlint
         entry: hlint
         language: system
-        files: \.hs$
+        files: '\.hs$'
         types: [file]
 
+      # O pacote não é publicado no Hackage; ignora apenas as checagens
+      # de metadados/distribuição que não se aplicam a este projeto.
       - id: cabal-check
         name: cabal check
         entry: cabal check
+        args:
+          - --ignore=no-repository
+          - --ignore=no-category
+          - --ignore=no-maintainer
+          - --ignore=no-description
+          - --ignore=missing-upper-bounds
+          - --ignore=license-none
+          - --ignore=missing-bounds-important
         language: system
-        files: \.cabal$
+        files: '\.cabal$'
         pass_filenames: false
 
-      # Bloqueia artefatos de build que não deveriam ser versionados
+      # Bloqueia artefatos gerados, caso escapem do .gitignore.
       - id: no-build-artifacts
-        name: bloquear artefatos de build (.hi/.o/verilog-out)
+        name: bloquear artefatos de build
         entry: >-
-          bash -c 'if git diff --cached --name-only | grep -E "\.(hi|o|dyn_hi|dyn_o)$|^verilog-out/|^dist-newstyle/|^output_files/|^db/|\.sof$"; then
+          bash -c 'if git diff --cached --name-only --diff-filter=ACMR | grep -Eq "\.(hi|o|dyn_hi|dyn_o|prof|eventlog|sof|pof|rbf|jic|qws|qdf|rpt|summary|smsg|done|jdi|pin|vcd|fst|ghw|wlf|ucdb|vstf)$|(^|/)(dist-newstyle|build|verilog-out|vhdl-out|systemverilog-out|output_files|db|incremental_db|qdb|greybox_tmp|tmp-clearbox|work|obj_dir|_build)/|\.topEntity/"; then
           echo "Artefatos de build detectados no commit."; exit 1; fi'
         language: system
         pass_filenames: false

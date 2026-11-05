@@ -1,0 +1,8 @@
+# Configuração do markdownlint usada pelo pre-commit.
+# 120 colunas acomoda as tabelas e exemplos do README sem forçar
+# quebras artificiais; tabelas e blocos de código não são limitados.
+MD013:
+  line_length: 120
+  tables: false
+  code_blocks: false
+  headings: false
