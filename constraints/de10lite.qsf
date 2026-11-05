@@ -16,8 +16,10 @@
 #
 #   * Reset: KEY0 nesta placa é ativo em NÍVEL BAIXO (apertar = 0V) — o
 #     oposto do que o domínio 'vSystem' do Clash assume por padrão (reset
-#     ativo em nível alto). Inverta o reset (ou troque a polaridade do
-#     domínio) no lado do Haskell antes de gerar o HDL.
+#     ativo em nível alto). O domínio 'Dom50' em Top.hs já usa
+#     vResetPolarity = ActiveLow, então o pino rst é ligado diretamente:
+#     o HDL gerado trata negedge rst / if (!rst). Se trocar a polaridade
+#     do domínio, ajuste também esta documentação.
 #
 # Nomes de porta usados aqui (clk, rst, vgaRed, ...) são os mesmos definidos
 # na anotação Synthesize do topEntity (Top.hs) — ajuste um lado se mudar o
