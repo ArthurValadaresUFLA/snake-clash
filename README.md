@@ -53,11 +53,11 @@ direcionado, não uma rota fixa decorada.
 ### Por que é viável em hardware
 
 O tabuleiro é pequeno (20×15 = 300 células por padrão). A busca inteira
-(pior caso) leva ~120 mil ciclos de clock (~2,4 ms a 50 MHz). O jogo se move
-12 vezes por segundo (padrão: `gameTickCycles = 4_166_667` a 50 MHz, ou seja,
-~83 ms entre movimentos). Ou seja, a "IA" termina de pensar em poucos
-milissegundos e passa o resto do tempo esperando o próximo tick — sobra
-tempo de sobra.
+(pior caso) leva cerca de 120 mil ciclos de clock (aproximadamente 2,4 ms a
+50 MHz). O jogo se move 12 vezes por segundo (padrão: `gameTickCycles =
+4_166_667` a 50 MHz, ou seja, cerca de 83 ms entre movimentos). Ou seja, a
+"IA" termina de pensar em poucos milissegundos e passa o resto do tempo
+esperando o próximo tick — sobra tempo de sobra.
 
 ## Estrutura do projeto
 
