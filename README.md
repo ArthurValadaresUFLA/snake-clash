@@ -53,10 +53,11 @@ direcionado, não uma rota fixa decorada.
 ### Por que é viável em hardware
 
 O tabuleiro é pequeno (20×15 = 300 células por padrão). A busca inteira
-(pior caso) leva ~300–400 ciclos de clock. O jogo se move poucas vezes por
-segundo (padrão: 6 vezes/segundo = a cada ~16,7 milhões de ciclos a
-100MHz). Ou seja, a "IA" termina de pensar em uma fração de milissegundo
-e passa o resto do tempo esperando o próximo tick — sobra tempo de sobra.
+(pior caso) leva ~120 mil ciclos de clock (~2,4 ms a 50 MHz). O jogo se move
+12 vezes por segundo (padrão: `gameTickCycles = 4_166_667` a 50 MHz, ou seja,
+~83 ms entre movimentos). Ou seja, a "IA" termina de pensar em poucos
+milissegundos e passa o resto do tempo esperando o próximo tick — sobra
+tempo de sobra.
 
 ## Estrutura do projeto
 
@@ -72,27 +73,28 @@ src/
   Audio.hs   -- beep (onda quadrada) ao comer maçã / morrer
   Top.hs     -- entidade de topo, liga tudo, expõe os pinos físicos
 constraints/
-  basys3.xdc -- exemplo de constraints para Digilent Basys3 (ajustar pinos)
+  de10lite.qsf -- pinos e configuração da Terasic DE10-Lite (Quartus)
+  de10lite.sdc -- constraints de timing (clock de 50 MHz)
 ```
 
 ## Parâmetros fáceis de ajustar
 
-| O quê                                 | Onde                                                             |
-| ------------------------------------- | ---------------------------------------------------------------- |
-| Tamanho do tabuleiro (colunas/linhas) | `Cols`/`Rows` em `Types.hs`                                      |
-| Tamanho do quadrado em pixels         | `cellPx` em `Render.hs` (deve dividir 640/480 igual a Cols/Rows) |
-| Velocidade da cobra                   | `gameTickCycles` em `Top.hs`                                     |
-| Frequência de clock da placa          | `createDomain` em `Top.hs`                                       |
-| Cores                                 | `black/green/red/...` em `Render.hs`                             |
-| Tons de áudio                         | `eatFreq`/`deadFreq` em `Audio.hs`                               |
+| O quê                                 | Onde                                                                           |
+| ------------------------------------- | ------------------------------------------------------------------------------ |
+| Tamanho do tabuleiro (colunas/linhas) | `Cols`/`Rows` em `Types.hs`                                                    |
+| Tamanho da célula em pixels           | 32×32 (shift de 5 bits em `Render.hs`; deve dividir 640/480 por `Cols`/`Rows`) |
+| Velocidade da cobra                   | `gameTickCycles` em `Top.hs`                                                   |
+| Frequência de clock da placa          | `createDomain` em `Top.hs`                                                     |
+| Cores                                 | `black/green/red/...` em `Render.hs`                                           |
+| Tons de áudio                         | `eatHalf`/`deadHalf` e `eatDurationCycles`/`deadDurationCycles` em `Audio.hs`  |
 
 Atenção: aumentar muito o tabuleiro aumenta bastante o consumo de
 registradores (a grade de "visitado"/"cor" do BFS e o vetor do corpo da
 cobra crescem com `Cols*Rows`). Para uma placa pequena, 20×15 (ou menos)
-é um bom ponto de partida; para tabuleiros grandes, a implementação de
-`Grid`/fila do BFS deveria migrar de `Vec` puro para memória de bloco
-(`Clash.Explicit.RAM.blockRam`), o que não foi feito aqui para manter o
-código didático e legível.
+é um bom ponto de partida; para tabuleiros grandes, as grades do BFS
+(`Cells`) deveriam migrar de `Vec` puro para memória de bloco
+(`Clash.Explicit.RAM.blockRam`). O corpo da cobra já usa block RAM em
+`Top.hs`; a busca não, para manter o código didático e legível.
 
 ## Build e simulação
 
@@ -159,6 +161,19 @@ clash -isrc src/Top.hs --vhdl -outputdir vhdl-out
 `-isrc` diz ao Clash/GHC onde procurar os módulos do projeto (`Types`,
 `BFS`, `Snake`, etc.).
 
+Se estiver usando o `Makefile`, os mesmos passos viram:
+
+```bash
+make build    # Passo 2: cabal build + .ghc.environment.*
+make verilog  # gera em verilog-out/
+make vhdl     # gera em vhdl-out/
+```
+
+O `make` chama `cabal build` automaticamente na primeira vez (quando ainda
+não existe `.ghc.environment.*`) e usa os arquivos gerados em
+`verilog-out/`/`vhdl-out/` como alvos, então só regenera quando o código
+muda. `make clean` remove as duas saídas.
+
 Se preferir manter tudo dentro do fluxo do `cabal` (sem instalar nada
 globalmente), a alternativa é adicionar `clash-ghc` como pacote do
 `cabal.project` deste repositório e então usar
@@ -181,22 +196,20 @@ ghci> import BFS
 ### Sobre o clock de pixel
 
 Para simplicidade, `VGA.hs` **não** usa um domínio de clock separado nem
-um PLL/MMCM: ele roda no clock do sistema (assumido 100MHz) e avança os
-contadores de pixel 1 a cada 4 ciclos, aproximando ~25MHz (o VGA real
+um PLL/MMCM: ele roda no clock do sistema (50MHz na DE10-Lite) e avança os
+contadores de pixel 1 a cada 2 ciclos, aproximando ~25MHz (o VGA real
 pede 25.175MHz — a diferença costuma ser tolerada pela maioria dos
 monitores, mas para um projeto "de verdade" o ideal é instanciar o PLL
-do fabricante (Clocking Wizard no Vivado, por exemplo) para gerar
+do fabricante (Clocking Wizard no Quartus, por exemplo) para gerar
 25.175MHz exatos e usar um domínio de clock Clash dedicado para o VGA).
 
 ## Limitações conhecidas / pontos de atenção
 
-- **Não compilado neste ambiente.** O código foi escrito com cuidado
-  seguindo os idiomas usuais de Clash (`Vec`, `Index`, `mealy`/registro
-  com realimentação, `HiddenClockResetEnable`), mas não há aqui toolchain
-  Clash/GHC para validar tipos/`clash --verilog` de ponta a ponta. Rode
-  localmente e ajuste eventuais detalhes de tipos (é comum precisar de
-  `resize`/anotações extras de `Index`/`Unsigned` que só aparecem no
-  erro do compilador).
+- **Validado localmente com GHC 9.10.3 + Clash.** O projeto compila
+  (`cabal build`) e gera HDL (`make verilog`/`make vhdl`); ao alterar
+  parâmetros de tipo (`Cols`, `Rows`, etc.), rode novamente e ajuste
+  eventuais `resize`/anotações extras de `Index`/`Unsigned` que só
+  aparecem no erro do compilador.
 - A heurística **não garante 100% de vitórias** — isso é intencional e
   explicado acima; é o trade-off pedido (heurística exequível em FPGA,
   não uma IA treinada, não um hamiltoniano trivial).
