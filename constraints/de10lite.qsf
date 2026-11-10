@@ -32,6 +32,19 @@ set_global_assignment -name TOP_LEVEL_ENTITY topEntity
 set_global_assignment -name BOARD "MAX 10 DE10 - Lite"
 
 # ------------------------------------------------------------------
+# Arquivos-fonte do projeto. Caminhos relativos à pasta do projeto
+# (.qpf), que deve ficar em constraints/ (mesma pasta deste .qsf).
+#
+# Use SEMPRE o Verilog gerado em ../verilog-out/ pelo Clash (make verilog).
+# O antigo build/verilog era um artefato obsoleto, gerado antes do fix de
+# reset ativo em baixo, e mantinha o design em reset (tela "sem sinal").
+# Se o .qpf estiver em outro diretório, ajuste os caminhos abaixo (ou
+# adicione os dois arquivos pelo GUI em Project > Add/Remove Files).
+# ------------------------------------------------------------------
+set_global_assignment -name VERILOG_FILE ../verilog-out/Top.topEntity/topEntity.v
+set_global_assignment -name SDC_FILE de10lite.sdc
+
+# ------------------------------------------------------------------
 # Clock de 50MHz da placa (MAX10_CLK1_50 no silkscreen/esquemático).
 # Timing: ver create_clock em de10lite.sdc.
 # ------------------------------------------------------------------
