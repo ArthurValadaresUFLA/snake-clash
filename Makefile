@@ -18,7 +18,7 @@ CLASH_PREREQ := build
 endif
 
 .DEFAULT_GOAL := help
-.PHONY: help build vhdl verilog lint fmt clean-verilog clean-vhdl clean
+.PHONY: help build vhdl verilog check-reset lint fmt clean-verilog clean-vhdl clean
 
 help:            ## Lista os alvos disponíveis
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | \
@@ -33,9 +33,22 @@ $(VHDL_OUT): $(HS_SRC) $(PROJ).cabal
 	$(CLASH) -i$(SRC_DIR) $(SRC_DIR)/$(TOP).hs --vhdl -outputdir $(VHDL_DIR)
 
 verilog: $(CLASH_PREREQ) $(VERILOG_OUT)  ## Gera o Verilog com o Clash
+	@$(MAKE) --no-print-directory check-reset
 
 $(VERILOG_OUT): $(HS_SRC) $(PROJ).cabal
 	$(CLASH) -i$(SRC_DIR) $(SRC_DIR)/$(TOP).hs --verilog -outputdir $(VERILOG_DIR)
+
+check-reset: $(VERILOG_OUT)  ## Falha se o Verilog gerado não usar reset ativo em baixo
+	@if grep -qE 'posedge[[:space:]]+rst' $(VERILOG_OUT); then \
+	  echo "ERRO: $(VERILOG_OUT) usa reset ativo em ALTO (posedge rst)."; \
+	  echo "      Dom50 deve ser ActiveLow (KEY0 da DE10-Lite); rode 'make verilog'."; \
+	  exit 1; \
+	fi
+	@grep -qE 'negedge[[:space:]]+rst' $(VERILOG_OUT) || { \
+	  echo "ERRO: não encontrei 'negedge rst' em $(VERILOG_OUT)."; \
+	  exit 1; \
+	}
+	@echo "OK: reset ativo em baixo (negedge rst) em $(VERILOG_OUT)"
 
 lint:            ## Roda hlint
 	hlint $(SRC_DIR)
