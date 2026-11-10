@@ -203,6 +203,30 @@ monitores, mas para um projeto "de verdade" o ideal é instanciar o PLL
 do fabricante (Clocking Wizard no Quartus, por exemplo) para gerar
 25.175MHz exatos e usar um domínio de clock Clash dedicado para o VGA).
 
+## Síntese no Quartus (DE10-Lite)
+
+O projeto usa o fluxo **Verilog** do Clash. O `constraints/de10lite.qsf` já
+declara os dois arquivos necessários (`VERILOG_FILE` apontando para
+`../verilog-out/Top.topEntity/topEntity.v` e `SDC_FILE de10lite.sdc`),
+assumindo que o `.qpf` fica na pasta `constraints/`. Se o seu projeto
+estiver em outro diretório, ajuste esses caminhos (ou adicione os arquivos
+pelo GUI em _Project > Add/Remove Files_).
+
+Sempre regenere o HDL com `make verilog` antes de compilar — **não** use
+saídas antigas de `build/`. O `make verilog` termina com `make check-reset`,
+que falha se o Verilog gerado usar reset ativo em alto (`posedge rst`);
+com `Dom50` em `ActiveLow` (KEY0 da DE10-Lite) o correto é `negedge rst`.
+
+Diagnóstico rápido se o monitor mostrar "sem sinal":
+
+- **LEDs**: `led` mostra `gsLen` em binário (começa em 3, `LEDR0`+`LEDR1`
+  acesos) e deve **aumentar** em segundos conforme a cobra come maçãs. Se
+  ficar parado em 3, o design não está rodando (reset preso ou clock morto),
+  não é problema do monitor.
+- **HSync (pino N3)**: deve oscilar em ~31,25kHz. Nível fixo em 3,3V indica
+  reset assertado (o pipeline mantém HS/VS inativos durante o reset).
+- **Timing Analyzer > Clocks**: `clk` deve aparecer com período de 20ns.
+
 ## Limitações conhecidas / pontos de atenção
 
 - **Validado localmente com GHC 9.10.3 + Clash.** O projeto compila
