@@ -10,9 +10,9 @@
 #   * Clock: a DE10-Lite roda a 50MHz (MAX10_CLK1_50), não 100MHz como a
 #     Basys3. Se você está reaproveitando o Top.hs deste projeto, PRECISA
 #     ajustar para 50MHz: createDomain (Top.hs), o divisor de pixel do VGA
-#     (VGA.hs espera ~25MHz = clock/4; a 50MHz isso vira clock/2), o
-#     gameTickCycles (Top.hs) e o clkHz do Audio.hs. Só trocar este .qsf
-#     NÃO é suficiente.
+#     (VGA.hs avança o contador 1 pixel a cada 2 ciclos = clock/2 a 50MHz,
+#     ~25MHz), o gameTickCycles (Top.hs) e o clkHz do Audio.hs. Só trocar
+#     este .qsf NÃO é suficiente.
 #
 #   * Reset: KEY0 nesta placa é ativo em NÍVEL BAIXO (apertar = 0V) — o
 #     oposto do que o domínio 'vSystem' do Clash assume por padrão (reset
