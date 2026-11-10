@@ -55,7 +55,7 @@ set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to clk
 # Reset — KEY0 (push-button, ativo em nível baixo nesta placa).
 # ------------------------------------------------------------------
 set_location_assignment PIN_B8 -to rst
-set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to rst
+set_instance_assignment -name IO_STANDARD "3.3 V SCHMITT TRIGGER" -to rst
 
 # ------------------------------------------------------------------
 # VGA - Red[3:0]  (VGA_R0..VGA_R3 no esquemático)
